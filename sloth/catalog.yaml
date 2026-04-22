@@ -1,0 +1,44 @@
+version: "prometheus/v1"
+service: "catalog"
+labels:
+  owner: "platform-eng"
+  tier: "2"
+slos:
+  - name: "availability"
+    objective: 99.9
+    description: "99.9% of requests return non-5xx responses"
+    sli:
+      events:
+        error_query: sum(rate(nginx_ingress_controller_requests{exported_service="catalog-service",status=~"5.."}[{{.window}}]))
+        total_query: sum(rate(nginx_ingress_controller_requests{exported_service="catalog-service"}[{{.window}}]))
+    alerting:
+      name: CatalogAvailabilityBurnRate
+      labels:
+        category: availability
+      annotations:
+        summary: "Catalog service error budget burn rate is too high"
+      page_alert:
+        labels:
+          severity: critical
+      ticket_alert:
+        labels:
+          severity: warning
+  - name: "latency"
+    objective: 99
+    description: "99% of requests complete within 500ms"
+    sli:
+      events:
+        error_query: 'sum(rate(nginx_ingress_controller_requests{exported_service="catalog-service"}[{{.window}}])) - sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{exported_service="catalog-service",le="0.5"}[{{.window}}]))'
+        total_query: 'sum(rate(nginx_ingress_controller_requests{exported_service="catalog-service"}[{{.window}}]))'
+    alerting:
+      name: CatalogLatencyBurnRate
+      labels:
+        category: latency
+      annotations:
+        summary: "Catalog service latency budget burn rate is too high"
+      page_alert:
+        labels:
+          severity: critical
+      ticket_alert:
+        labels:
+          severity: warning
