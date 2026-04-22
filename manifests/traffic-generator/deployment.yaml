@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-generator
+  namespace: monitoring
+  labels:
+    app: traffic-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-generator
+  template:
+    metadata:
+      labels:
+        app: traffic-generator
+    spec:
+      containers:
+        - name: traffic
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                # Catalog: ~80% of traffic
+                wget -qO- --header="Host: catalog.lab.local" http://ingress-nginx-controller.ingress-nginx.svc/ > /dev/null 2>&1
+                wget -qO- --header="Host: catalog.lab.local" http://ingress-nginx-controller.ingress-nginx.svc/ > /dev/null 2>&1
+                wget -qO- --header="Host: catalog.lab.local" http://ingress-nginx-controller.ingress-nginx.svc/ > /dev/null 2>&1
+                wget -qO- --header="Host: catalog.lab.local" http://ingress-nginx-controller.ingress-nginx.svc/ > /dev/null 2>&1
+                # Orders: ~20% of traffic
+                wget -qO- --header="Host: orders.lab.local" http://ingress-nginx-controller.ingress-nginx.svc/ > /dev/null 2>&1
+                # Occasional 404 to simulate errors (~5%)
+                wget -qO- --header="Host: catalog.lab.local" http://ingress-nginx-controller.ingress-nginx.svc/nonexistent > /dev/null 2>&1
+                sleep 1
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
