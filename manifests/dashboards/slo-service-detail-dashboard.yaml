@@ -1,0 +1,288 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slo-service-detail-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  slo-service-detail.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [
+        {
+          "title": "SLO Overview",
+          "url": "/d/slo-overview",
+          "type": "link"
+        }
+      ],
+      "panels": [
+        {
+          "title": "Request rate",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 0 },
+          "id": 1,
+          "targets": [
+            {
+              "expr": "sum by (status) (rate(nginx_ingress_controller_requests{exported_service=~\"$service\"}[5m]))",
+              "legendFormat": "{{ status }}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "showPoints": "never",
+                "stacking": { "mode": "normal" }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byRegexp", "options": "^5.." },
+                "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+              },
+              {
+                "matcher": { "id": "byRegexp", "options": "^4.." },
+                "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }]
+              },
+              {
+                "matcher": { "id": "byRegexp", "options": "^2.." },
+                "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
+              }
+            ]
+          },
+          "options": {
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["rate"] },
+            "tooltip": { "mode": "multi" }
+          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "title": "Error rate (5xx)",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 0 },
+          "id": 2,
+          "targets": [
+            {
+              "expr": "sum(rate(nginx_ingress_controller_requests{exported_service=~\"$service\",status=~\"5..\"}[5m])) / sum(rate(nginx_ingress_controller_requests{exported_service=~\"$service\"}[5m])) * 100",
+              "legendFormat": "Error %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 0.1 }
+                ]
+              },
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom" },
+            "tooltip": { "mode": "multi" }
+          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "title": "Latency percentiles",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 7 },
+          "id": 3,
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(nginx_ingress_controller_request_duration_seconds_bucket{exported_service=~\"$service\"}[5m])))",
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(nginx_ingress_controller_request_duration_seconds_bucket{exported_service=~\"$service\"}[5m])))",
+              "legendFormat": "p95",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(nginx_ingress_controller_request_duration_seconds_bucket{exported_service=~\"$service\"}[5m])))",
+              "legendFormat": "p99",
+              "refId": "C"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 0,
+                "showPoints": "never"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 0.5 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+            "tooltip": { "mode": "multi" }
+          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "title": "Error budget remaining",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 7 },
+          "id": 4,
+          "targets": [
+            {
+              "expr": "slo:period_error_budget_remaining:ratio{sloth_service=~\"$sloth_service\"} * 100",
+              "legendFormat": "{{ sloth_slo }}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "orange", "value": 25 },
+                  { "color": "green", "value": 50 }
+                ]
+              },
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+            "tooltip": { "mode": "multi" }
+          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "title": "Burn rate (all windows)",
+          "type": "timeseries",
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 14 },
+          "id": 5,
+          "targets": [
+            {
+              "expr": "slo:sli_error:ratio_rate5m{sloth_service=~\"$sloth_service\", sloth_slo=\"availability\"}",
+              "legendFormat": "avail 5m",
+              "refId": "A"
+            },
+            {
+              "expr": "slo:sli_error:ratio_rate1h{sloth_service=~\"$sloth_service\", sloth_slo=\"availability\"}",
+              "legendFormat": "avail 1h",
+              "refId": "B"
+            },
+            {
+              "expr": "slo:sli_error:ratio_rate5m{sloth_service=~\"$sloth_service\", sloth_slo=\"latency\"}",
+              "legendFormat": "latency 5m",
+              "refId": "C"
+            },
+            {
+              "expr": "slo:sli_error:ratio_rate1h{sloth_service=~\"$sloth_service\", sloth_slo=\"latency\"}",
+              "legendFormat": "latency 1h",
+              "refId": "D"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 0,
+                "showPoints": "never"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+            "tooltip": { "mode": "multi" }
+          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "title": "SLO targets",
+          "type": "stat",
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 14 },
+          "id": 6,
+          "targets": [
+            {
+              "expr": "slo:objective:ratio{sloth_service=~\"$sloth_service\"} * 100",
+              "legendFormat": "{{ sloth_slo }}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "blue", "value": null }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "textMode": "value_and_name",
+            "colorMode": "background"
+          },
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["slo", "platform", "detail"],
+      "templating": {
+        "list": [
+          {
+            "current": { "selected": false, "text": "catalog-service", "value": "catalog-service" },
+            "definition": "label_values(nginx_ingress_controller_requests, exported_service)",
+            "name": "service",
+            "query": { "query": "label_values(nginx_ingress_controller_requests, exported_service)", "refId": "A" },
+            "type": "query"
+          },
+          {
+            "current": { "selected": false, "text": "catalog", "value": "catalog" },
+            "definition": "label_values(slo:period_error_budget_remaining:ratio, sloth_service)",
+            "name": "sloth_service",
+            "query": { "query": "label_values(slo:period_error_budget_remaining:ratio, sloth_service)", "refId": "A" },
+            "type": "query"
+          }
+        ]
+      },
+      "time": { "from": "now-3h", "to": "now" },
+      "title": "Service SLO Detail",
+      "uid": "slo-service-detail"
+    }
