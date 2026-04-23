@@ -1,0 +1,38 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: slo-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  route:
+    receiver: slo-critical
+    groupBy:
+      - sloth_service
+      - sloth_slo
+    groupWait: 10s
+    groupInterval: 1m
+    repeatInterval: 5m
+    matchers:
+      - name: sloth_service
+        matchType: "=~"
+        value: ".+"
+    routes:
+      - receiver: slo-warning
+        matchers:
+          - name: severity
+            matchType: "="
+            value: warning
+        groupWait: 30s
+        groupInterval: 5m
+        repeatInterval: 15m
+  receivers:
+    - name: slo-critical
+      webhookConfigs:
+        - url: http://alert-webhook.monitoring.svc:8080
+          sendResolved: true
+    - name: slo-warning
+      webhookConfigs:
+        - url: http://alert-webhook.monitoring.svc:8080
+          sendResolved: true

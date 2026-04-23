@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-webhook
+  namespace: monitoring
+  labels:
+    app: alert-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alert-webhook
+  template:
+    metadata:
+      labels:
+        app: alert-webhook
+    spec:
+      containers:
+        - name: webhook
+          image: python:3.12-alpine
+          command: ["python3", "-c"]
+          args:
+            - |
+              from http.server import HTTPServer, BaseHTTPRequestHandler
+              import json, sys
+              class Handler(BaseHTTPRequestHandler):
+                  def do_POST(self):
+                      length = int(self.headers.get('Content-Length', 0))
+                      body = self.rfile.read(length).decode()
+                      try:
+                          data = json.loads(body)
+                          for alert in data.get('alerts', []):
+                              status = alert.get('status', '?')
+                              name = alert.get('labels', {}).get('alertname', '?')
+                              svc = alert.get('labels', {}).get('sloth_service', '?')
+                              sev = alert.get('labels', {}).get('severity', '?')
+                              print(f"[{status}] {name} | service={svc} severity={sev}", flush=True)
+                      except:
+                          print(f"RAW: {body[:500]}", flush=True)
+                      self.send_response(200)
+                      self.end_headers()
+              print("Webhook listening on :8080", flush=True)
+              HTTPServer(('', 8080), Handler).serve_forever()
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alert-webhook
+  namespace: monitoring
+spec:
+  selector:
+    app: alert-webhook
+  ports:
+    - port: 8080
+      targetPort: 8080
