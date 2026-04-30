@@ -8,9 +8,9 @@ Built on top of [platform-foundation](https://github.com/rinatmyrzaliev/platform
 
 ```
 ┌─────────────────┐      ┌──────────────────────────────────────────────┐
-│ Traffic          │────▶│ ingress-nginx controller                     │
-│ Generator        │     │ (metrics: port 10254)                        │
-│ (busybox curl)   │     │   ┌──────────┐ ┌──────────┐ ┌──────────┐     │
+│ Traffic         │────▶ │ ingress-nginx controller                     │
+│ Generator       │      │ (metrics: port 10254)                        │
+│ (busybox curl)  │      │   ┌──────────┐ ┌──────────┐ ┌──────────┐     │
 └─────────────────┘      │   │ catalog  │ │ orders   │ │ payments │     │
                          │   └──────────┘ └──────────┘ └──────────┘     │
                          └──────────────────────┬───────────────────────┘
@@ -78,10 +78,10 @@ platform-observability/
 
 Follows the Google SRE book approach. Two severity tiers:
 
-| Tier | Burn rate | Short window | Long window | Action |
-|------|-----------|-------------|-------------|--------|
-| Page (critical) | 14x | 5 min | 1 hour | Wake on-call |
-| Ticket (warning) | 3x | 30 min | 6 hours | Create ticket |
+| Tier | Burn rate | Short window | Long window | Action    |
+|------|-----------|--------------|-------------|-----------|
+| Page (critical)  | 14x | 5 min  | 1 hour | Wake on-call   |
+| Ticket (warning) | 3x  | 30 min | 6 hours | Create ticket |
 
 Both windows must be true simultaneously to fire. Short window catches the spike, long window confirms it's sustained.
 
